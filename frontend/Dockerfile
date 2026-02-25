@@ -4,7 +4,7 @@ FROM node:18 as build
 WORKDIR /app
 
 COPY package*.json ./
-RUN rm -f package-lock.json && npm install
+RUN rm -rf package-lock.json node_modules && npm install --no-fund
 
 COPY . .
 RUN npm run build
