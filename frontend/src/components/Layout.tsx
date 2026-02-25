@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Target, MapPin, BarChart3, Menu, LogOut, Leaf, ShieldAlert } from 'lucide-react';
+import { MapPin, BarChart3, Menu, LogOut, Leaf, ShieldAlert } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 interface LayoutProps {
