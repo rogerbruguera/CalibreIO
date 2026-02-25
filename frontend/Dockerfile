@@ -7,6 +7,7 @@ COPY package*.json ./
 RUN rm -rf package-lock.json node_modules && npm install --no-fund
 
 COPY . .
+RUN npm install -g postcss postcss-cli && npm install @rollup/rollup-linux-x64-gnu --save-optional
 RUN npm run build
 
 # Stage 2: Serve the application with Nginx
