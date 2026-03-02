@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect } from 'react';
 import api from '../api';
 import { Field, SizeControl } from '../types';
-import { Plus, Trash2, Trees, Maximize, LineChart as LineChartIcon, X, Ruler, Calendar, AlertCircle, MapPin } from 'lucide-react';
+import { Plus, Trash2, Trees, Maximize, LineChart as LineChartIcon, X, Ruler, Calendar, AlertCircle, MapPin, RefreshCcw } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -30,6 +30,10 @@ export default function Fields() {
   const [subvarieties, setSubvarieties] = useState<{ id: string, variety_id: string, name: string }[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Filtres
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterVariety, setFilterVariety] = useState('');
 
   // Analytics Modal State
   const [selectedFieldForAnalytics, setSelectedFieldForAnalytics] = useState<Field | null>(null);
@@ -62,6 +66,7 @@ export default function Fields() {
   });
 
   const fetchFields = async () => {
+    setLoading(true);
     try {
       const [res, varRes, subRes] = await Promise.all([
         api.get('/fields'),
@@ -282,10 +287,26 @@ export default function Fields() {
     }
   };
 
+  const filteredFields = fields.filter((field) => {
+    const matchesSearch = field.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesVariety = filterVariety ? field.variety === filterVariety : true;
+    return matchesSearch && matchesVariety;
+  });
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm">
-        <h1 className="text-2xl font-bold text-gray-800">Camps de Cultiu</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-gray-800">Camps de Cultiu</h1>
+          <button
+            onClick={fetchFields}
+            disabled={loading}
+            className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors group"
+            title="Refrescar camps"
+          >
+            <RefreshCcw size={18} className={loading ? "animate-spin text-emerald-500" : "group-hover:-rotate-180 transition-transform duration-500 ease-out"} />
+          </button>
+        </div>
         <button
           onClick={() => setIsAdding(!isAdding)}
           className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md font-medium flex items-center gap-2 transition-colors"
@@ -387,14 +408,39 @@ export default function Fields() {
         </div>
       )}
 
+      {/* Barra de Filtres */}
+      <div className="bg-white p-4 rounded-lg shadow-sm flex flex-col sm:flex-row gap-4 border border-gray-100">
+        <div className="flex-1">
+          <input
+            type="text"
+            placeholder="🔍 Cercar camp pel nom..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full border border-gray-300 rounded-md p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 text-slate-700"
+          />
+        </div>
+        <div className="sm:w-64">
+          <select
+            value={filterVariety}
+            onChange={(e) => setFilterVariety(e.target.value)}
+            className="w-full border border-gray-300 rounded-md p-2.5 outline-none focus:ring-2 focus:ring-emerald-500 bg-white text-slate-700"
+          >
+            <option value="">🌱 Totes les varietats</option>
+            {varieties.map(v => (
+              <option key={v.id} value={v.name}>{v.name}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {fields.length === 0 ? (
+        {filteredFields.length === 0 ? (
           <div className="col-span-full bg-white p-8 text-center rounded-lg shadow-sm border border-dashed border-gray-300">
-            <p className="text-gray-500 text-lg">Encara no hi ha cap camp registrat.</p>
-            <p className="text-gray-400 text-sm mt-1">Fes clic a "Nou Camp" per començar.</p>
+            <p className="text-gray-500 text-lg">Encara no hi ha cap camp registrat o no n'hi ha cap que coincideixi amb la cerca.</p>
+            <p className="text-gray-400 text-sm mt-1">Fes clic a "Nou Camp" per començar o canvia els filtres.</p>
           </div>
         ) : (
-          fields.map((field) => (
+          filteredFields.map((field) => (
             <div key={field.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
               <div className="p-4 border-b bg-gray-50 flex justify-between items-start">
                 <h3 className="font-bold text-lg text-gray-800 truncate" title={field.name}>{field.name}</h3>

@@ -42,7 +42,12 @@ router.get('/global-average', async (req, res) => {
     const referenceFields = varCheck.rows[0].reference_fields || [];
 
     if (referenceFields.length === 0) {
-      return res.json([]); // No reference fields chosen yet, so no curve
+      // Fallback: use all fields that have this variety
+      const fallbackCheck = await db.query('SELECT id FROM fields WHERE variety = $1', [variety]);
+      if (fallbackCheck.rows.length === 0) {
+        return res.json([]);
+      }
+      referenceFields.push(...fallbackCheck.rows.map(r => r.id));
     }
 
     // Now securely average those specific fields

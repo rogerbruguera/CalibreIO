@@ -1,2 +1,2 @@
 ﻿ALTER TABLE size_controls
-ADD COLUMN measurements JSONB;
+ADD COLUMN IF NOT EXISTS measurements JSONB;

@@ -12,7 +12,7 @@ import {
     Tooltip,
     Legend,
 } from 'chart.js';
-import { BarChart3, Filter, ArrowLeft, TrendingUp } from 'lucide-react';
+import { BarChart3, Filter, ArrowLeft, TrendingUp, RefreshCcw } from 'lucide-react';
 
 ChartJS.register(
     CategoryScale,
@@ -36,23 +36,25 @@ export default function Dashboard() {
     const [selectedVariety, setSelectedVariety] = useState<string>('');
     const [selectedFields, setSelectedFields] = useState<string[]>([]);
 
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const [fieldsRes, controlsRes, catalogRes] = await Promise.all([
+                api.get('/fields'),
+                api.get('/size-controls'),
+                api.get('/catalog/varieties')
+            ]);
+            setFields(fieldsRes.data);
+            setControls(controlsRes.data);
+            setCatalogVarieties(catalogRes.data);
+        } catch (err) {
+            console.error('Error fetching dashboard data:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [fieldsRes, controlsRes, catalogRes] = await Promise.all([
-                    api.get('/fields'),
-                    api.get('/size-controls'),
-                    api.get('/catalog/varieties')
-                ]);
-                setFields(fieldsRes.data);
-                setControls(controlsRes.data);
-                setCatalogVarieties(catalogRes.data);
-            } catch (err) {
-                console.error('Error fetching dashboard data:', err);
-            } finally {
-                setLoading(false);
-            }
-        };
         fetchData();
     }, []);
 
@@ -245,15 +247,25 @@ export default function Dashboard() {
                         }
                     </p>
                 </div>
-                {viewMode === 'detail' && (
+                <div className="flex items-center gap-2">
                     <button
-                        onClick={goBackToGrid}
-                        className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-medium transition-colors"
+                        onClick={fetchData}
+                        disabled={loading}
+                        className="flex items-center justify-center p-2 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors group"
+                        title="Refrescar dades"
                     >
-                        <ArrowLeft size={18} />
-                        Tornar a la Vista Global
+                        <RefreshCcw size={20} className={loading ? "animate-spin text-emerald-500" : "group-hover:-rotate-180 transition-transform duration-500 ease-out"} />
                     </button>
-                )}
+                    {viewMode === 'detail' && (
+                        <button
+                            onClick={goBackToGrid}
+                            className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-medium transition-colors"
+                        >
+                            <ArrowLeft size={18} />
+                            Tornar a la Vista Global
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* GRID MODE */}

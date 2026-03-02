@@ -27,9 +27,13 @@ services:
       - DB_NAME=calibredb
       - DB_PASSWORD=mysecretpassword
       - DB_PORT=5432
+      - DATABASE_URL=postgresql://admin:mysecretpassword@db:5432/calibredb
       - JWT_SECRET=una_clau_molt_secreta_i_llarga_per_produccio
-    ports:
-      - "3000:3000"
+      - VIRTUAL_HOST=api.calibreio.cat
+      - LETSENCRYPT_HOST=api.calibreio.cat
+      - LETSENCRYPT_EMAIL=agrogestioinfo@gmail.com
+    expose:
+      - "3000"
     depends_on:
       - db
 
@@ -39,10 +43,49 @@ services:
       dockerfile: Dockerfile
     container_name: calibre_prod_frontend
     restart: always
-    ports:
-      - "80:80"
+    environment:
+      - VIRTUAL_HOST=calibreio.cat,www.calibreio.cat
+      - LETSENCRYPT_HOST=calibreio.cat,www.calibreio.cat
+      - LETSENCRYPT_EMAIL=agrogestioinfo@gmail.com
+    expose:
+      - "80"
     depends_on:
       - backend
 
+  nginx-proxy:
+    image: nginxproxy/nginx-proxy:alpine
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - certs:/etc/nginx/certs
+      - vhost:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+    restart: always
+
+  acme-companion:
+    image: nginxproxy/acme-companion
+    container_name: nginx-proxy-acme
+    environment:
+      - DEFAULT_EMAIL=agrogestioinfo@gmail.com
+      - NGINX_PROXY_CONTAINER=nginx-proxy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - certs:/etc/nginx/certs:rw
+      - vhost:/etc/nginx/vhost.d:rw
+      - html:/usr/share/nginx/html:rw
+      - acme:/etc/acme.sh
+    volumes_from:
+      - nginx-proxy
+    depends_on:
+      - nginx-proxy
+    restart: always
+
 volumes:
   pgdata:
+  certs:
+  vhost:
+  html:
+  acme:

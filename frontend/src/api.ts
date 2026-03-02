@@ -1,7 +1,7 @@
 ﻿import axios from 'axios';
 
-// La URL base serà el backend Node local o el de producció en el futur
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+// La URL base serà el backend Node local o el de producció amb HTTPS via Let's Encrypt
+const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? `https://api.calibreio.cat/api` : 'http://localhost:3000/api');
 
 const api = axios.create({
   baseURL: API_URL,
