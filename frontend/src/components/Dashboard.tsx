@@ -179,25 +179,37 @@ export default function Dashboard() {
     }, [varieties, fields, controls]);
 
     // --- LOGIC: Detail View (Multi-Field Compare) ---
-    const detailChartData = useMemo(() => {
-        if (selectedFields.length === 0) return null;
+    const [detailStats, setDetailStats] = useState<{ field_id: string, formatted_date: string, aggregated_average: string }[]>([]);
+    const [loadingDetail, setLoadingDetail] = useState(false);
 
-        const filteredControls = controls.filter(c => selectedFields.includes(c.field_id));
+    useEffect(() => {
+        if (viewMode === 'detail' && selectedFields.length > 0) {
+            setLoadingDetail(true);
+            api.get(`/size-controls/dashboard-stats?fields=${selectedFields.join(',')}`)
+                .then(res => setDetailStats(res.data))
+                .catch(err => console.error("Error fetching detail stats", err))
+                .finally(() => setLoadingDetail(false));
+        } else {
+            setDetailStats([]);
+        }
+    }, [viewMode, selectedFields, savingRef]); // Re-fetch si canvien els camps o s'acaba de guardar
+
+    const detailChartData = useMemo(() => {
+        if (selectedFields.length === 0 || detailStats.length === 0) return null;
+
         const dateSet = new Set<string>();
-        filteredControls.forEach(c => { if (c.date) dateSet.add(c.date); });
+        detailStats.forEach(c => { if (c.formatted_date) dateSet.add(c.formatted_date); });
         const labels = Array.from(dateSet).sort((a, b) => new Date(a).getTime() - new Date(b).getTime());
 
         const colors = ['#10b981', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4', '#ef4444'];
 
         const datasets = selectedFields.map((fieldId, idx) => {
             const field = fields.find(f => f.id === fieldId);
-            const fieldControls = filteredControls.filter(c => c.field_id === fieldId);
+            const fieldControls = detailStats.filter(c => c.field_id === fieldId);
 
             const data = labels.map(dateLabel => {
-                const recordsOnDate = fieldControls.filter(c => c.date === dateLabel);
-                if (recordsOnDate.length === 0) return null;
-                const avg = recordsOnDate.reduce((sum, r) => sum + Number(r.average_size), 0) / recordsOnDate.length;
-                return Number(avg.toFixed(2));
+                const record = fieldControls.find(c => c.formatted_date === dateLabel);
+                return record ? Number(record.aggregated_average) : null;
             });
 
             return {
@@ -211,20 +223,29 @@ export default function Dashboard() {
         });
 
         return { labels, datasets };
-    }, [controls, selectedFields, fields]);
+    }, [detailStats, selectedFields, fields]);
 
     const detailOptions = {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
             legend: { position: 'top' as const },
-            title: { display: true, text: `Comparativa Detallada: ${selectedVariety || ''}` }
+            title: { display: true, text: `Comparativa Detallada: ${selectedVariety || ''}` },
+            decimation: {
+                enabled: true,
+                algorithm: 'lttb' as const,
+                samples: 50, // Resampling quan hi ha excés de punts per pantalla
+            }
         },
         scales: {
-            y: { title: { display: true, text: 'Calibre Mitjà (mm)' } }
+            y: { title: { display: true, text: 'Calibre Mitjà (mm)' } },
+            x: {
+                // Perquè la decimació de ChartJs funcioni millor requereix tipus time, però ho deixem en Category
+                // i ell farà la decimation de punts directament limitant-los.
+                ticks: { maxTicksLimit: 20 }
+            }
         }
     };
-
 
     if (loading) return <div className="p-8 text-center text-slate-500">Carregant gràfics...</div>;
 
@@ -425,6 +446,11 @@ export default function Dashboard() {
                             <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
                                 <Filter className="w-16 h-16 mb-4 opacity-20" />
                                 <p className="text-lg">Selecciona almenys un camp a l'esquerra</p>
+                            </div>
+                        ) : loadingDetail ? (
+                            <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
+                                <RefreshCcw className="w-16 h-16 mb-4 opacity-50 animate-spin" />
+                                <p className="text-lg">Calculant corbes agregades...</p>
                             </div>
                         ) : detailChartData ? (
                             <div className="flex-1 flex flex-col relative w-full h-full min-h-[400px]">

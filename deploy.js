@@ -80,6 +80,9 @@ async function deploy() {
         const s3 = await ssh.execCommand('docker exec -i -e PGPASSWORD=mysecretpassword calibre_prod_db psql -U admin -d calibredb < backend/database/add_measurements.sql', { cwd: '/opt/calibreio' });
         if (s3.stderr) console.error('Add measurements Error:', s3.stderr);
 
+        const s4 = await ssh.execCommand('docker exec -i -e PGPASSWORD=mysecretpassword calibre_prod_db psql -U admin -d calibredb < backend/database/add_performance_indexes.sql', { cwd: '/opt/calibreio' });
+        if (s4.stderr) console.error('Add indexes Error:', s4.stderr);
+
         console.log('8. Seeding initial admin user...');
         const seedRes = await ssh.execCommand('docker exec -i calibre_prod_backend node seed_admin.js', { cwd: '/opt/calibreio' });
         console.log(seedRes.stdout);

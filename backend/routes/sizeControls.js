@@ -30,6 +30,35 @@ router.get('/', async (req, res) => {
   }
 });
 
+// NOU ENDPOINT OPTIMITZAT PER A LA VISTA COMPARATIVA (DETAIL MODE)
+router.get('/dashboard-stats', async (req, res) => {
+  try {
+    const { fields } = req.query; // S'espera llista separada per comes: id1,id2,id3
+    if (!fields) return res.status(400).json({ error: 'fields query parameter required' });
+
+    const fieldIds = fields.split(',');
+
+    // Demanem al motor de Base de Dades que sumi i divideixi de forma instantània les mitjanes diàries!
+    const query = `
+      SELECT 
+        field_id,
+        to_char(date, 'YYYY-MM-DD') as formatted_date,
+        date,
+        ROUND(SUM(average_size * sample_size) / SUM(sample_size)::numeric, 2) as aggregated_average
+      FROM size_controls
+      WHERE field_id = ANY($1::uuid[])
+      GROUP BY field_id, date
+      ORDER BY date ASC
+    `;
+
+    const result = await db.query(query, [fieldIds]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to build aggregated stats' });
+  }
+});
+
 router.get('/global-average', async (req, res) => {
   try {
     const { variety } = req.query;
